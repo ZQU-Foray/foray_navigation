@@ -23,6 +23,14 @@
 ## 项目约定
 
 - 分支：`dev-rz` 开发（默认），`fork` 只读参考，`main` 待基础工作完成后创建（集成）
+- **main 创建/更新规程**（AI 工作流文件不进入 main，详见 decision.md）：
+  ```bash
+  git checkout --orphan main && git rm -rf .
+  git checkout dev-rz -- readme.md LICENSE .gitattributes .gitignore .github/ src/
+  git commit -m "chore: create main branch (production snapshot)"
+  ```
+  生产文件清单：readme.md / LICENSE / .gitattributes / .gitignore / .github/ / src/（后续）
+  注意：CI 守卫（`.github/workflows/guard-main-ai-files.yml`）会阻止 AI 文件合入 main
 - 功能开发：`feature/<功能简称>` 分支，验证后合入 dev-rz
 - 提交格式：`<type>: <简短描述>`（type: feat / fix / docs / refactor / test / chore）
 - 包命名：小写 + 下划线（ROS2 规范）；launch 文件用 launch.py 后缀

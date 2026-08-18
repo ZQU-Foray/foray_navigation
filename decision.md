@@ -4,6 +4,25 @@
 
 Date: 2026-08-18
 
+Context: AI 工作流文件（AGENTS.md / plan.md / tree.md / decision.md / docs/knowledge/ / scripts/ 等）不应进入 main 分支；main 应为干净的生产/集成分支。
+
+Decision: 采用三层组合方案：
+1. **orphan 创建 main**：`git checkout --orphan main` 后只检出生产文件（readme.md、LICENSE、.gitattributes、.gitignore、.github/、src/），AI 文件从根上不进入 main 的树；
+2. **CI 守卫**：`.github/workflows/guard-main-ai-files.yml` 阻止 AI 文件通过 PR / push 合入 main；
+3. **发布物剔除**：`.gitattributes` 中 `export-ignore` 使 GitHub 下载的 zip/tar 归档不包含 AI 文件。
+
+Reason: git 分支机制无法按分支控制"文件是否被跟踪"（.gitignore 只作用于未跟踪文件，merge 会把文件带过去）；orphan 从根上隔离最干净，CI 防止将来误合，export-ignore 保证发布物干净。
+
+Alternatives: 独立 meta 分支/仓库存放 AI 文件；仅靠 .gitignore 排除。
+
+Rejected:
+- 独立 meta 分支/仓库：当前 AI 文件已入库，迁移成本高且开发时引用不便
+- 仅 .gitignore：对已跟踪文件无效，无法阻止 merge 带入
+
+## Decision
+
+Date: 2026-08-18
+
 Context: 借鉴 SMBU-PolarBear pb2025_sentry_nav 架构搭建自研哨兵导航栈，需确定项目基础决策。
 
 Decision: 项目名 `foray_sentry_nav`；开发环境为 Ubuntu 22.04 虚拟机（KVM/QEMU，宿主 Arch Linux）；在 `dev-rz` 分支从 0 搭建；`fork` 分支仅作参考；`main` 分支待 dev 完成基础工作后创建（集成分支）。

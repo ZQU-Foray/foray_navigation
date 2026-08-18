@@ -9,7 +9,12 @@
 ├── plan.md                   # 开发计划与进度（含 Agent State / Before Snapshot）
 ├── tree.md                   # 目录结构说明
 ├── decision.md               # 关键工程决策日志
+├── LICENSE                   # 开源协议（WTFPL）
 ├── .gitignore
+├── .gitattributes            # 发布归档剔除 AI 工作流文件（export-ignore）
+├── .github/
+│   └── workflows/
+│       └── guard-main-ai-files.yml   # CI 守卫：阻止 AI 工作流文件进入 main
 ├── scripts/
 │   └── index_knowledge.py    # 知识索引脚本（Vector Backend Adapter，chromadb）
 └── docs/

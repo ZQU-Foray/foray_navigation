@@ -18,9 +18,10 @@ PREPARE（脚手架与知识索引就绪，等待 Phase 0/1 环境就绪后进�
 
 ## Before Snapshot
 
-commit hash:   26d3572
+commit hash:   e7bf7c1
 branch:        dev-rz
-modified files: plan.md, tree.md, file_summary.md（本次文档同步，无代码变更）
+modified files: LICENSE, .gitattributes, .github/workflows/guard-main-ai-files.yml,
+                decision.md, AGENTS.md, tree.md, docs/knowledge/file_summary.md, plan.md
 risk level:    L0
 
 ## 模糊点与待确认项
