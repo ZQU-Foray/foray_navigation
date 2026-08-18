@@ -3,9 +3,10 @@ build/
 install/
 log/
 
-# Python（知识索引虚拟环境）
+# Python（知识索引虚拟环境与索引数据）
 .venv/
 venv/
+.vector-index/
 __pycache__/
 *.py[cod]
 
