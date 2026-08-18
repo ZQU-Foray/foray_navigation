@@ -10,6 +10,8 @@
 ├── tree.md                   # 目录结构说明
 ├── decision.md               # 关键工程决策日志
 ├── .gitignore
+├── scripts/
+│   └── index_knowledge.py    # 知识索引脚本（Vector Backend Adapter，chromadb）
 └── docs/
     ├── nav_stack_architecture_design.md   # 架构设计文档（分层 / TF / 数据流 / 路线图，参考）
     └── knowledge/
@@ -26,3 +28,4 @@ MUST NOT 记录以下内容：
 - `node_modules/`、`build/`、`dist/`、`.git/` 等依赖与产物目录
 - 临时文件、缓存文件、日志文件
 - `.venv/`（项目内 Python 虚拟环境，仅供知识索引使用）
+- `.vector-index/`（知识索引本地数据，由脚本生成）

@@ -8,6 +8,7 @@
 | `tree.md` | 目录结构说明 | 定位协议 L1 |
 | `decision.md` | 关键工程决策日志 | 决策回溯 |
 | `.gitignore` | 忽略构建产物与敏感文件 | git 跟踪边界 |
+| `scripts/index_knowledge.py` | 知识索引脚本（chromadb 全量索引 / 查询验证） | 全量索引 + 语义查询（`.venv/bin/python scripts/index_knowledge.py [--query ...]`） |
 | `docs/nav_stack_architecture_design.md` | 架构设计（分层 / TF / 数据流 / 路线图） | 架构参考（fork 借鉴） |
 | `docs/knowledge/folder_summary.md` | 目录职责摘要 | 定位协议 L1 |
 | `docs/knowledge/file_summary.md` | 文件职责摘要 | 定位协议 L2 |
