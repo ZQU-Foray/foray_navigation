@@ -5,7 +5,8 @@
 ### 寻路框架（M0–M6，设计见 `docs/nav_architecture.md`）
 
 - [x] **M0 设计**：契约、代价图分层、语义层、通行档案、验收矩阵
-- [ ] **M1 几何与地图**：`Vec2`/`Pose2`、`GridMap`（PGM + YAML 元数据）、world↔grid
+- [x] **M1a 接口**：`types.hpp` / `costmap_view.hpp` / `planner.hpp` / `controller.hpp`（header-only，零警告）
+- [ ] **M1b 地图**：`GridMap`（PGM + YAML 元数据）、world↔grid 实现
 - [ ] **M2 代价图**：静态层 + 禁行层 + 膨胀层（膨胀半径由 `min_passable_width` 推出）
 - [ ] **M3 全局寻路**：A\*（8 邻接、禁斜穿犄角）+ 视线捷径化 + 失败原因分类
 - [ ] **M4 局部控制**：纯追踪（全向）+ `VelocityScheduler` + 到点/进度判定
@@ -22,13 +23,13 @@
 
 ## 当前 Agent State
 
-NAV_ARCH_DRAFTED（设计已落盘，等评审后进 M1）
+NAV_INTERFACES_DONE（接口已定义并自检通过，接着做 M1b 地图）
 
 ## Before Snapshot
 
 commit hash:   （本次提交）
 branch:        feat/nav-skeleton
-modified files: 新增 `docs/nav_architecture.md`；`tree.md`、`decision.md`、`plan.md` 同步
+modified files: 新增 `include/foray/nav/*.hpp`、`CMakeLists.txt`、`package.xml`；`tree.md`、`plan.md` 同步
 risk level:    L1（纯文档，无代码）
 
 ## 模糊点与待确认项

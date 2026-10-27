@@ -14,6 +14,13 @@
 ├── .gitignore
 ├── docs/
 │   └── nav_architecture.md  寻路框架设计：契约、代价图、语义层、通行档案、验收
+├── include/foray/nav/       公共接口（header-only，不依赖 ROS）
+│   ├── types.hpp            几何/阵营/能力/目标/状态/错误码/路径/指令
+│   ├── costmap_view.hpp     代价图只读快照接口 + 代价编码
+│   ├── planner.hpp          全局规划器接口
+│   └── controller.hpp       局部控制器接口
+├── CMakeLists.txt           接口库 foray_navigation（INTERFACE，C++17）
+├── package.xml              build_type=cmake，供 colcon 识别
 └── .github/
     └── workflows/
         └── ci.yml           复制自组织 CI 模板
