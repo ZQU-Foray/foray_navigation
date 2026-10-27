@@ -29,6 +29,9 @@ namespace nav
 enum CostValue : uint8_t
 {
   kCostFree = 0,
+  /// 偏好区：比自由更"便宜"，用来表达"这条路队里更想走"（例如隧道）。
+  /// 只影响代价权重，不改变可通行性。
+  kCostPreferred = 1,
   /// 未知空间（地图未标、或地图外）：保守视为不可通行。
   kCostUnknown = 253,
   /// 致死：禁行区、高地、动态障碍占位。

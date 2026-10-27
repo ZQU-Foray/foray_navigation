@@ -176,6 +176,58 @@ void test_smoothing_reduces_points()
   check(smooth_path.size() < raw_path.size(), "smoothing actually removes points on open field");
 }
 
+
+void test_tunnel_preferred()
+{
+  // 场景：正中间有一条横向的"近路"（自由），下方有一条更长的横向"隧道"（偏好区）。
+  // 无偏好时应走上面；开启偏好后应改走隧道。
+  foray::nav::Costmap map = make_free_map();
+  // 在中线上下各造一道墙，只留"上方近路"和"下方隧道"两个缺口
+  for (int iy = 0; iy < kH; ++iy) {
+    if (iy <= 22 && iy >= 18) {continue;}   // 中间整条留空（近路）
+    map.set_cost(40, iy, foray::nav::kCostLethal);
+  }
+  // 在 y < 0.75m 的条带（下方）铺偏好区：模拟隧道
+  for (int iy = 0; iy < 15; ++iy) {
+    for (int ix = 0; ix < kW; ++ix) {map.set_cost(ix, iy, foray::nav::kCostPreferred);}
+  }
+
+  foray::nav::Path no_pref;
+  {
+    foray::nav::AstarParams params;
+    params.prefer_weight = 1.0;   // 关掉偏好
+    foray::nav::AstarPlanner planner(params);
+    const auto error = planner.plan(
+      map, foray::nav::Pose2{0.5, 1.0, 0.0}, foray::nav::Pose2{3.5, 1.0, 0.0}, &no_pref);
+    check(error == foray::nav::NavError::kNone, "no-pref: ok");
+  }
+  foray::nav::Path with_pref;
+  {
+    foray::nav::AstarPlanner planner;
+    const auto error = planner.plan(
+      map, foray::nav::Pose2{0.5, 1.0, 0.0}, foray::nav::Pose2{3.5, 1.0, 0.0}, &with_pref);
+    check(error == foray::nav::NavError::kNone, "pref: ok");
+  }
+
+  // 无偏好时走中间近路（y 接近 1.0m，穿过 18..22 行）
+  bool no_pref_mid = false;
+  for (const auto & pose : no_pref) {
+    int ix = 0;
+    int iy = 0;
+    if (map.world_to_grid(foray::nav::Vec2{pose.x, pose.y}, &ix, &iy) && iy >= 18 && iy <= 22) {
+      no_pref_mid = true;
+    }
+  }
+  check(no_pref_mid, "no-pref: takes the short middle route");
+
+  // 开启偏好后应当绕去下方偏好带（y < 0.75m）
+  bool took_tunnel = false;
+  for (const auto & pose : with_pref) {
+    if (pose.y < 0.75) {took_tunnel = true;}
+  }
+  check(took_tunnel, "pref: detours through the preferred tunnel band");
+}
+
 }  // namespace
 
 int main()
@@ -187,6 +239,7 @@ int main()
   test_fully_blocked();
   test_narrow_corridor();
   test_smoothing_reduces_points();
+  test_tunnel_preferred();
 
   if (g_failures == 0) {
     std::printf("ALL TESTS PASSED\n");

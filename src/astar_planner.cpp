@@ -47,13 +47,16 @@ struct NodeGreater
 constexpr uint8_t kMaxInflatedCostRef = 252;
 
 /// 8 邻接的行走代价权重：膨胀格更"贵"，但不禁止（禁止靠致死格）。
-double step_weight(uint8_t cost, double cost_weight)
+double step_weight(uint8_t cost, double cost_weight, double prefer_weight)
 {
   if (cost == kCostLethal) {
     return std::numeric_limits<double>::infinity();
   }
   if (cost == kCostUnknown) {
     return std::numeric_limits<double>::infinity();
+  }
+  if (cost == kCostPreferred) {
+    return std::max(0.05, std::min(1.0, prefer_weight));
   }
   const double normalized = static_cast<double>(cost) / static_cast<double>(kMaxInflatedCostRef);
   return 1.0 + cost_weight * std::min(1.0, normalized);
@@ -91,6 +94,35 @@ bool line_of_sight(
     }
   }
   return true;
+}
+
+/// 一段直线的行走代价（保守采样）。捷径化必须看代价，否则会把"隧道偏好"抄成直穿。
+double segment_cost(
+  const CostmapView & map, const Vec2 & from, const Vec2 & to,
+  double cost_weight, double prefer_weight)
+{
+  const double dx = to.x - from.x;
+  const double dy = to.y - from.y;
+  const double length = std::sqrt(dx * dx + dy * dy);
+  const double step = map.resolution() * 0.5;
+  const int samples = std::max(1, static_cast<int>(std::ceil(length / std::max(1e-6, step))));
+  double total = 0.0;
+  const double seg = length / static_cast<double>(samples);
+  for (int i = 1; i <= samples; ++i) {
+    const double t = static_cast<double>(i) / static_cast<double>(samples);
+    const Vec2 point{from.x + dx * t, from.y + dy * t};
+    int ix = 0;
+    int iy = 0;
+    if (!map.world_to_grid(point, &ix, &iy)) {
+      return std::numeric_limits<double>::infinity();
+    }
+    const double weight = step_weight(map.cost_at(ix, iy), cost_weight, prefer_weight);
+    if (!std::isfinite(weight)) {
+      return std::numeric_limits<double>::infinity();
+    }
+    total += seg * weight;
+  }
+  return total;
 }
 
 }  // namespace
@@ -139,13 +171,16 @@ NavError AstarPlanner::plan(
     return NavError::kNone;
   }
 
+  // 偏好区权重可能小于 1，启发式按最小权重缩放，保证可采纳（不破最优性）。
+  const double heuristic_scale = std::min(1.0, std::max(0.05, params_.prefer_weight));
+
   std::vector<double> g_score(total, std::numeric_limits<double>::infinity());
   std::vector<int> parent(total, -1);
   std::vector<char> closed(total, 0);
   std::priority_queue<Node, std::vector<Node>, NodeGreater> open;
 
   g_score[static_cast<size_t>(start_index)] = 0.0;
-  open.push(Node{heuristic(goal_x - start_x, goal_y - start_y, resolution), start_index});
+  open.push(Node{heuristic_scale * heuristic(goal_x - start_x, goal_y - start_y, resolution), start_index});
 
   const int kDx[8] = {1, -1, 0, 0, 1, 1, -1, -1};
   const int kDy[8] = {0, 0, 1, -1, 1, -1, 1, -1};
@@ -196,12 +231,12 @@ NavError AstarPlanner::plan(
       }
       const double step = (diagonal ? std::sqrt(2.0) : 1.0) * resolution;
       const double candidate =
-        g_score[static_cast<size_t>(current.index)] + step * step_weight(cost, params_.cost_weight);
+        g_score[static_cast<size_t>(current.index)] + step * step_weight(cost, params_.cost_weight, params_.prefer_weight);
       if (candidate < g_score[static_cast<size_t>(neighbor)]) {
         g_score[static_cast<size_t>(neighbor)] = candidate;
         parent[static_cast<size_t>(neighbor)] = current.index;
         open.push(
-          Node{candidate + heuristic(goal_x - nx, goal_y - ny, resolution), neighbor});
+          Node{candidate + heuristic_scale * heuristic(goal_x - nx, goal_y - ny, resolution), neighbor});
       }
     }
   }
@@ -226,18 +261,30 @@ NavError AstarPlanner::plan(
   }
   std::reverse(cells.begin(), cells.end());
 
-  // 视线捷径化：能直连就跳过中间点。
+  // 视线捷径化：能直连、且**代价不变差**才跳过中间点。
+  // 只看通不通是不够的——那会把"绕隧道"抄成直穿，偏好就白设了。
   std::vector<Vec2> reduced;
   if (params_.smooth && cells.size() > 2) {
     reduced.push_back(cells.front());
     size_t anchor = 0;
     while (anchor + 1 < cells.size()) {
-      size_t next = cells.size() - 1;
-      while (next > anchor + 1 && !line_of_sight(map, cells[anchor], cells[next])) {
-        --next;
+      size_t best = anchor + 1;
+      double best_chain = segment_cost(
+        map, cells[anchor], cells[anchor + 1], params_.cost_weight, params_.prefer_weight);
+      for (size_t next = anchor + 2; next < cells.size(); ++next) {
+        best_chain += segment_cost(
+          map, cells[next - 1], cells[next], params_.cost_weight, params_.prefer_weight);
+        if (!line_of_sight(map, cells[anchor], cells[next])) {
+          continue;
+        }
+        const double direct = segment_cost(
+          map, cells[anchor], cells[next], params_.cost_weight, params_.prefer_weight);
+        if (direct <= best_chain * 1.02) {
+          best = next;
+        }
       }
-      reduced.push_back(cells[next]);
-      anchor = next;
+      reduced.push_back(cells[best]);
+      anchor = best;
     }
     if (reduced.size() >= 2 && (reduced.back().x != cells.back().x ||
       reduced.back().y != cells.back().y))

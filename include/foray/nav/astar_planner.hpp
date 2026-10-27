@@ -27,6 +27,8 @@ struct AstarParams
 {
   /// 膨胀代价折算成行走代价的权重：代价 252 的格子视为 weigh 的 (1 + weight) 倍。
   double cost_weight{3.0};
+  /// 偏好区（kCostPreferred）的行走权重：小于 1 表示"更想走这里"。
+  double prefer_weight{0.5};
   /// 是否做视线捷径化（去掉"能直连却还绕一格"的锯齿点）。
   bool smooth{true};
   /// 单次规划最多展开的格子数上限（防御性上界，防死循环）。
