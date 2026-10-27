@@ -7,7 +7,7 @@
 - [x] **M0 设计**：契约、代价图分层、语义层、通行档案、验收矩阵
 - [x] **M1a 接口**：`types.hpp` / `costmap_view.hpp` / `planner.hpp` / `controller.hpp`（header-only，零警告）
 - [x] **M1b 地图**：`GridMap`（PGM P5/P2 + YAML 元数据 + 三态代价 + world↔grid），独立测试全绿
-- [ ] **M2 代价图**：静态层 + 禁行层 + 膨胀层（膨胀半径由 `min_passable_width` 推出）
+- [x] **M2 代价图**：静态层 + 禁行层（多边形）+ 膨胀层（倒角距离变换，半径由 `min_passable_width` 推出）+ 动态层占格
 - [ ] **M3 全局寻路**：A\*（8 邻接、禁斜穿犄角）+ 视线捷径化 + 失败原因分类
 - [ ] **M4 局部控制**：纯追踪（全向）+ `VelocityScheduler` + 到点/进度判定
 - [ ] **M5 恢复与状态机**：清图 → 旋转 → 后退 → 重规划 → 上报
@@ -23,7 +23,7 @@
 
 ## 当前 Agent State
 
-NAV_MAP_DONE（地图读入与坐标换算完成、测试全绿，下一步 M2 代价图分层）
+NAV_COSTMAP_DONE（分层代价图完成、两组测试全绿，下一步 M3 A* 全局寻路）
 
 ## Before Snapshot
 

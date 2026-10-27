@@ -20,9 +20,11 @@
 │   ├── planner.hpp          全局规划器接口
 │   └── controller.hpp       局部控制器接口
 ├── src/
-│   └── grid_map.cpp         栅格地图：PGM 读入 + YAML 元数据 + 坐标换算
+│   ├── grid_map.cpp         栅格地图：PGM 读入 + YAML 元数据 + 坐标换算
+│   └── costmap.cpp          分层代价图：静态/禁行/膨胀/动态
 ├── test/
-│   └── grid_map_test.cpp    地图独立测试（不依赖测试框架）
+│   ├── grid_map_test.cpp    地图独立测试（不依赖测试框架）
+│   └── costmap_test.cpp     代价图分层与膨胀测试
 ├── CMakeLists.txt           库 foray_navigation（C++17，零警告）
 ├── package.xml              build_type=cmake，供 colcon 识别
 └── .github/
