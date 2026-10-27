@@ -12,12 +12,15 @@
 ├── CODEOWNERS               Review 自动分派
 ├── .foray-layer             所属层与依赖边界（CI 校验）
 ├── .gitignore
+├── docs/
+│   └── nav_architecture.md  寻路框架设计：契约、代价图、语义层、通行档案、验收
 └── .github/
     └── workflows/
         └── ci.yml           复制自组织 CI 模板
 ```
 
-> 本仓为**初始化状态**，尚无源码目录。随开发推进同步更新本文件。
+> 本仓源码目录尚未建立，当前只有设计文档（`docs/nav_architecture.md`）。
+> 随代码落地同步更新本文件。
 
 ## 记录约束
 

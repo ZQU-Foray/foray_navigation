@@ -2,6 +2,18 @@
 
 ## 任务列表
 
+### 寻路框架（M0–M6，设计见 `docs/nav_architecture.md`）
+
+- [x] **M0 设计**：契约、代价图分层、语义层、通行档案、验收矩阵
+- [ ] **M1 几何与地图**：`Vec2`/`Pose2`、`GridMap`（PGM + YAML 元数据）、world↔grid
+- [ ] **M2 代价图**：静态层 + 禁行层 + 膨胀层（膨胀半径由 `min_passable_width` 推出）
+- [ ] **M3 全局寻路**：A\*（8 邻接、禁斜穿犄角）+ 视线捷径化 + 失败原因分类
+- [ ] **M4 局部控制**：纯追踪（全向）+ `VelocityScheduler` + 到点/进度判定
+- [ ] **M5 恢复与状态机**：清图 → 旋转 → 后退 → 重规划 → 上报
+- [ ] **M6 端到端**：2027 3V3 地图上跑通「补给区 → 中央控制区」，路径可视化
+
+### 原基线清理（承接 fork 分支）
+
 - [ ] 清理 fork：删除 terrain_analysis 等已定删除项
 - [ ] 把导航参数抽出为 `shared.yaml` + `<robot>.yaml` 两级
 - [ ] 接 `foray_localization` 的位姿与地图（替代当前直连）
@@ -10,17 +22,24 @@
 
 ## 当前 Agent State
 
-PLAN_READY
+NAV_ARCH_DRAFTED（设计已落盘，等评审后进 M1）
 
 ## Before Snapshot
 
-commit hash:   （首次提交）
-branch:        main
-modified files: （首次初始化）
-risk level:    L1
+commit hash:   （本次提交）
+branch:        feat/nav-skeleton
+modified files: 新增 `docs/nav_architecture.md`；`tree.md`、`decision.md`、`plan.md` 同步
+risk level:    L1（纯文档，无代码）
 
 ## 模糊点与待确认项
 
+- **2027 赛季不允许机间通信**（已落进设计与决策）：本仓不假设共享状态，
+  动态障碍只按几何消费；敌我识别属 `foray_vision`，本仓不参与。
+  仍需队里定：**三台车抢同一条走廊**时如何赛前分工（YAML 写死）
+- **隧道净宽 / 净高、高地坡道坡度、工作台高度**尚未查到，在 `机器人制作规范手册` 里，
+  补齐前 M2 的膨胀半径只能按估计值
+- **车体尺寸与标定参数未定**（车宽、最大速度、最大爬坡角），所有借来的默认值标「待实测」
+- 地图资产（PGM + 区域表）尚无产出，M1 用的第一张图需先建
 - 本仓接口尚未冻结，任务清单为**方向性**的，落地顺序以 `foray_docs/algorithm_structure.md` §9 演进阶段为准
 - 依赖的自研仓尚未建齐，跨仓任务需等对方 `README.md` 明确接口后再启动
 
