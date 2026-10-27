@@ -1,0 +1,15 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>foray_navigation</name>
+  <version>0.1.0</version>
+  <description>Foray L4 导航：静态地图规划 + 动态障碍规避 + 全向控制器（不依赖 ROS 的核心算法）</description>
+  <maintainer email="Heart-0251@outlook.com">Foray Navigation</maintainer>
+  <license>TODO</license>
+
+  <buildtool_depend>cmake</buildtool_depend>
+
+  <export>
+    <build_type>cmake</build_type>
+  </export>
+</package>

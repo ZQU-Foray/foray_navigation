@@ -12,12 +12,32 @@
 ├── CODEOWNERS               Review 自动分派
 ├── .foray-layer             所属层与依赖边界（CI 校验）
 ├── .gitignore
+├── docs/
+│   └── nav_architecture.md  寻路框架设计：契约、代价图、语义层、通行档案、验收
+├── include/foray/nav/       公共接口（header-only，不依赖 ROS）
+│   ├── types.hpp            几何/阵营/能力/目标/状态/错误码/路径/指令
+│   ├── costmap_view.hpp     代价图只读快照接口 + 代价编码
+│   ├── planner.hpp          全局规划器接口
+│   └── controller.hpp       局部控制器接口
+├── src/
+│   ├── grid_map.cpp         栅格地图：PGM 读入 + YAML 元数据 + 坐标换算
+│   ├── costmap.cpp          分层代价图：静态/禁行/膨胀/动态
+│   ├── astar_planner.cpp    A* 全局寻路（8 邻接、禁斜穿犄角、视线捷径化）
+│   └── pursuit_controller.cpp  纯追踪控制（全向、限幅、曲率与到点降速）
+├── test/
+│   ├── grid_map_test.cpp    地图独立测试（不依赖测试框架）
+│   ├── costmap_test.cpp     代价图分层与膨胀测试
+│   ├── astar_planner_test.cpp  A* 用例（含隧道偏好）
+│   └── pursuit_controller_test.cpp  控制器用例
+├── CMakeLists.txt           库 foray_navigation（C++17，零警告）
+├── package.xml              build_type=cmake，供 colcon 识别
 └── .github/
     └── workflows/
         └── ci.yml           复制自组织 CI 模板
 ```
 
-> 本仓为**初始化状态**，尚无源码目录。随开发推进同步更新本文件。
+> 本仓源码目录尚未建立，当前只有设计文档（`docs/nav_architecture.md`）。
+> 随代码落地同步更新本文件。
 
 ## 记录约束
 
