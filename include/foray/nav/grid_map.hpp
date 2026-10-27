@@ -75,6 +75,9 @@ public:
   int width() const override { return width_; }
   int height() const override { return height_; }
   Vec2 origin() const override { return Vec2{meta_.origin_x, meta_.origin_y}; }
+  int64_t stamp_ns() const override { return stamp_ns_; }
+  const uint8_t * data() const override { return costs_.empty() ? nullptr : costs_.data(); }
+  int stride() const override { return width_; }
   uint8_t cost_at(int ix, int iy) const override;
   bool world_to_grid(const Vec2 & world, int * ix, int * iy) const override;
   bool grid_to_world(int ix, int iy, Vec2 * world) const override;
@@ -94,6 +97,8 @@ private:
   int width_{0};
   int height_{0};
   bool loaded_{false};
+  /// 载入时刻（纳秒），作为地图资产的版本号。
+  int64_t stamp_ns_{0};
   /// 按栅格下标存放的代价（已按"y 向上"翻转好）。
   std::vector<uint8_t> costs_{};
 };

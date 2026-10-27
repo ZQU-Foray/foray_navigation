@@ -5,7 +5,7 @@
 ### 寻路框架（M0–M6，设计见 `docs/nav_architecture.md`）
 
 - [x] **M0 设计**：契约、代价图分层、语义层、通行档案、验收矩阵
-- [x] **M1a 接口**：`types.hpp` / `costmap_view.hpp` / `planner.hpp` / `controller.hpp`（header-only，零警告）
+- [x] **M1a 接口**：`types.hpp` / `costmap_view.hpp` / `planner.hpp` / `controller.hpp`（header-only，零警告；已按评审修正契约）
 - [x] **M1b 地图**：`GridMap`（PGM P5/P2 + YAML 元数据 + 三态代价 + world↔grid），独立测试全绿
 - [x] **M2 代价图**：静态层 + 禁行层（多边形）+ 膨胀层（倒角距离变换，半径由 `min_passable_width` 推出）+ 动态层占格
 - [x] **M3 全局寻路**：A\*（8 邻接、禁斜穿犄角）+ 视线捷径化 + 失败原因分类；支持**偏好代价**（隧道优先）

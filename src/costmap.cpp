@@ -15,6 +15,7 @@
 #include "foray/nav/costmap.hpp"
 
 #include <algorithm>
+#include <chrono>
 #include <cmath>
 #include <limits>
 #include <string>
@@ -26,6 +27,12 @@ namespace nav
 {
 namespace
 {
+
+int64_t now_ns()
+{
+  return std::chrono::duration_cast<std::chrono::nanoseconds>(
+    std::chrono::system_clock::now().time_since_epoch()).count();
+}
 
 /// 膨胀层能写的最大代价：比"致死"低一档，避免把衰减路径当成硬障碍。
 constexpr uint8_t kMaxInflatedCost = 252;
@@ -71,11 +78,13 @@ bool Costmap::init(
   resolution_ = resolution;
   origin_ = origin;
   costs_.assign(static_cast<size_t>(width) * static_cast<size_t>(height), kCostUnknown);
+  stamp_ns_ = now_ns();
   return true;
 }
 
 bool Costmap::set_static_layer(const CostmapView & static_map, std::string * error)
 {
+  stamp_ns_ = now_ns();
   if (width_ <= 0 || height_ <= 0) {
     if (error) {*error = "costmap not initialized";}
     return false;
@@ -102,6 +111,7 @@ bool Costmap::set_static_layer(const CostmapView & static_map, std::string * err
 
 void Costmap::fill_polygon(const std::vector<Vec2> & polygon, uint8_t cost)
 {
+  stamp_ns_ = now_ns();
   if (polygon.size() < 3) {
     return;
   }
@@ -120,6 +130,7 @@ void Costmap::fill_polygon(const std::vector<Vec2> & polygon, uint8_t cost)
 
 void Costmap::inflate(double inscribed_radius, double inflation_radius, double cost_scaling)
 {
+  stamp_ns_ = now_ns();
   if (width_ <= 0 || height_ <= 0 || inflation_radius <= 0.0) {
     return;
   }
@@ -182,6 +193,7 @@ void Costmap::inflate(double inscribed_radius, double inflation_radius, double c
 
 void Costmap::stamp_obstacles(const std::vector<DynamicObstacle> & obstacles)
 {
+  stamp_ns_ = now_ns();
   if (obstacles.empty()) {
     return;
   }

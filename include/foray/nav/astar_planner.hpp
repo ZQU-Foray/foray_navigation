@@ -31,7 +31,7 @@ struct AstarParams
   double prefer_weight{0.5};
   /// 是否做视线捷径化（去掉"能直连却还绕一格"的锯齿点）。
   bool smooth{true};
-  /// 单次规划最多展开的格子数上限（防御性上界，防死循环）。
+  /// 单次规划最多展开的格子数上限（防御性上界）。可被 `PlanningOptions` 覆盖。
   int max_expansions{200000};
 };
 
@@ -49,6 +49,7 @@ public:
     const CostmapView & map,
     const Pose2 & start,
     const Pose2 & goal,
+    const PlanningOptions & options,
     Path * out) override;
 
   /// 当前参数（测试与调参用）。

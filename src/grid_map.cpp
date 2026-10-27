@@ -15,6 +15,7 @@
 #include "foray/nav/grid_map.hpp"
 
 #include <algorithm>
+#include <chrono>
 #include <cmath>
 #include <cstdio>
 #include <fstream>
@@ -28,6 +29,12 @@ namespace nav
 {
 namespace
 {
+
+int64_t now_ns()
+{
+  return std::chrono::duration_cast<std::chrono::nanoseconds>(
+    std::chrono::system_clock::now().time_since_epoch()).count();
+}
 
 std::string trim(const std::string & text)
 {
@@ -312,6 +319,7 @@ bool GridMap::build_from_pixels(
   }
 
   loaded_ = true;
+  stamp_ns_ = now_ns();
   return true;
 }
 

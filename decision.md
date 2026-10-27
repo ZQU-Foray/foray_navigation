@@ -172,3 +172,29 @@ Alternatives:
 
 Rejected:
 - 用负数或负代价表达偏好 —— 破坏 A* 的单调性
+
+---
+
+## Decision
+
+Date: 2026-10-28
+
+Context: 主人评审接口，提了五条：代价编码与语义矛盾、快照无版本时间戳但错误码里引用了"版本不匹配"、
+到达判定归属不清、`plan()` 无预算、`cost_at()` 逐格虚函数进热路径。
+
+Decision: 五条全改，接口作破坏性调整（本仓尚未发布，允许）。
+
+Reason / 改动明细:
+1. **代价编码统一为"数值越小越划算"**：`kCostPreferred = 0`、`kCostFree = 1`，膨胀带 2..252 不变。
+   同时把"必须把代价当边权重、不得二值化"写进 `GlobalPlanner` 契约。
+2. **`CostmapView::stamp_ns()`**：快照自带版本时间戳，`kInvalidInput` 的"版本不匹配"才有判断依据。
+3. **到达判定归状态机**：控制器只管跟路径，新增 `stop_tolerance()` 并明确它**不产生 `kReached`**。
+4. **`PlanningOptions{max_expansions, deadline_ns}`**：预算进签名，超预算必须返回 `kNoPath` 且不许阻塞。
+5. **`data()` / `stride()`**：热路径可直接寻址；返回 `nullptr` 表示退化为 `cost_at()`。
+
+Alternatives:
+- 只在文档里写"实现自行遵守预算"：不可验证，等于没写
+- 保持 `free = 0` 靠特判绕过：读的人一定会绊跤（就是这次的起因）
+
+Rejected:
+- 把到达判定塞进控制器：控制器拿不到 `NavGoal`，会逼着实现各自造一套容差

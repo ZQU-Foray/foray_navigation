@@ -15,6 +15,7 @@
 #include "foray/nav/astar_planner.hpp"
 
 #include <algorithm>
+#include <chrono>
 #include <cmath>
 #include <cstddef>
 #include <functional>
@@ -58,7 +59,12 @@ double step_weight(uint8_t cost, double cost_weight, double prefer_weight)
   if (cost == kCostPreferred) {
     return std::max(0.05, std::min(1.0, prefer_weight));
   }
-  const double normalized = static_cast<double>(cost) / static_cast<double>(kMaxInflatedCostRef);
+  if (cost == kCostFree) {
+    return 1.0;
+  }
+  // 2..252：膨胀衰减带，线性折算成"更贵"
+  const double normalized = static_cast<double>(cost - kCostFree) /
+    static_cast<double>(kMaxInflatedCostRef - kCostFree);
   return 1.0 + cost_weight * std::min(1.0, normalized);
 }
 
@@ -131,6 +137,7 @@ NavError AstarPlanner::plan(
   const CostmapView & map,
   const Pose2 & start,
   const Pose2 & goal,
+  const PlanningOptions & options,
   Path * out)
 {
   if (out == nullptr) {
@@ -148,15 +155,28 @@ NavError AstarPlanner::plan(
   if (!map.world_to_grid(Vec2{goal.x, goal.y}, &goal_x, &goal_y)) {
     return NavError::kInvalidInput;   // 目标在地图外：调用方给的坐标有问题
   }
-  if (!map.passable(start_x, start_y)) {
-    return NavError::kInvalidInput;   // 起点在致死/未知格：先让上层把人放好
-  }
-  if (!map.passable(goal_x, goal_y)) {
-    return NavError::kGoalInLethal;
-  }
 
   const int width = map.width();
   const int height = map.height();
+  // 热路径入口：有连续内存就直接寻址，没有就退回虚函数（见 CostmapView::data）。
+  const uint8_t * grid = map.data();
+  const int grid_stride = map.stride();
+  auto cost_of = [grid, grid_stride, &map](int gx, int gy) -> uint8_t {
+      if (grid != nullptr) {return grid[static_cast<size_t>(gy) * static_cast<size_t>(grid_stride) +
+        static_cast<size_t>(gx)];}
+      return map.cost_at(gx, gy);
+    };
+  const int max_expansions = options.max_expansions > 0 ? options.max_expansions :
+    params_.max_expansions;
+  const auto started = std::chrono::steady_clock::now();
+
+  if (cost_of(start_x, start_y) == kCostLethal || cost_of(start_x, start_y) == kCostUnknown) {
+    return NavError::kInvalidInput;   // 起点在致死/未知格：先让上层把人放好
+  }
+  if (cost_of(goal_x, goal_y) == kCostLethal || cost_of(goal_x, goal_y) == kCostUnknown) {
+    return NavError::kGoalInLethal;
+  }
+
   if (width <= 0 || height <= 0) {
     return NavError::kInvalidInput;
   }
@@ -198,8 +218,18 @@ NavError AstarPlanner::plan(
       found = true;
       break;
     }
-    if (++expansions > params_.max_expansions) {
-      break;
+    if (++expansions > max_expansions) {
+      break;   // 预算耗尽：本次不证明可达，按 kNoPath 返回
+    }
+    if (options.deadline_ns > 0) {
+      const auto elapsed = std::chrono::duration_cast<std::chrono::nanoseconds>(
+        std::chrono::steady_clock::now() - started).count();
+      const auto budget = std::chrono::duration_cast<std::chrono::nanoseconds>(
+        std::chrono::microseconds(1)).count();
+      (void)budget;
+      if (elapsed > options.deadline_ns) {
+        break;   // 超时：同上
+      }
     }
 
     const int cx = current.index % width;
@@ -214,15 +244,15 @@ NavError AstarPlanner::plan(
       if (closed[static_cast<size_t>(neighbor)] != 0) {
         continue;
       }
-      const uint8_t cost = map.cost_at(nx, ny);
+      const uint8_t cost = cost_of(nx, ny);
       if (cost == kCostLethal || cost == kCostUnknown) {
         continue;
       }
       const bool diagonal = (kDx[k] != 0) && (kDy[k] != 0);
       if (diagonal) {
         // 禁止斜穿犄角：两条正交邻格都得能走。
-        const uint8_t side_a = map.cost_at(nx, cy);
-        const uint8_t side_b = map.cost_at(cx, ny);
+        const uint8_t side_a = cost_of(nx, cy);
+        const uint8_t side_b = cost_of(cx, ny);
         if (side_a == kCostLethal || side_a == kCostUnknown ||
           side_b == kCostLethal || side_b == kCostUnknown)
         {

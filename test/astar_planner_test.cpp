@@ -67,7 +67,7 @@ void test_straight_line()
   foray::nav::AstarPlanner planner;
   foray::nav::Path path;
   const auto error = planner.plan(
-    map, foray::nav::Pose2{0.5, 1.0, 0.0}, foray::nav::Pose2{3.5, 1.0, 0.0}, &path);
+    map, foray::nav::Pose2{0.5, 1.0, 0.0}, foray::nav::Pose2{3.5, 1.0, 0.0}, foray::nav::PlanningOptions{}, &path);
   check(error == foray::nav::NavError::kNone, "straight: ok");
   check(path.size() >= 2, "straight: has points");
   check(std::fabs(path.front().x - 0.5) < 0.06, "straight: starts near start");
@@ -84,7 +84,7 @@ void test_l_shape()
   foray::nav::AstarPlanner planner;
   foray::nav::Path path;
   const auto error = planner.plan(
-    map, foray::nav::Pose2{0.5, 0.5, 0.0}, foray::nav::Pose2{3.5, 0.5, 0.0}, &path);
+    map, foray::nav::Pose2{0.5, 0.5, 0.0}, foray::nav::Pose2{3.5, 0.5, 0.0}, foray::nav::PlanningOptions{}, &path);
   check(error == foray::nav::NavError::kNone, "L: ok");
   // 必须从缺口（上方，y > 1.3m）绕过去
   bool went_high = false;
@@ -109,7 +109,7 @@ void test_goal_in_lethal()
   foray::nav::AstarPlanner planner;
   foray::nav::Path path;
   const auto error = planner.plan(
-    map, foray::nav::Pose2{0.5, 1.0, 0.0}, foray::nav::Pose2{3.0, 1.0, 0.0}, &path);
+    map, foray::nav::Pose2{0.5, 1.0, 0.0}, foray::nav::Pose2{3.0, 1.0, 0.0}, foray::nav::PlanningOptions{}, &path);
   check(error == foray::nav::NavError::kGoalInLethal, "goal lethal: reported without searching");
 }
 
@@ -119,7 +119,7 @@ void test_start_outside()
   foray::nav::AstarPlanner planner;
   foray::nav::Path path;
   const auto error = planner.plan(
-    map, foray::nav::Pose2{-1.0, 1.0, 0.0}, foray::nav::Pose2{3.0, 1.0, 0.0}, &path);
+    map, foray::nav::Pose2{-1.0, 1.0, 0.0}, foray::nav::Pose2{3.0, 1.0, 0.0}, foray::nav::PlanningOptions{}, &path);
   check(error == foray::nav::NavError::kStartOutsideMap, "start outside: reported");
 }
 
@@ -130,7 +130,7 @@ void test_fully_blocked()
   foray::nav::AstarPlanner planner;
   foray::nav::Path path;
   const auto error = planner.plan(
-    map, foray::nav::Pose2{0.5, 1.0, 0.0}, foray::nav::Pose2{3.5, 1.0, 0.0}, &path);
+    map, foray::nav::Pose2{0.5, 1.0, 0.0}, foray::nav::Pose2{3.5, 1.0, 0.0}, foray::nav::PlanningOptions{}, &path);
   check(error == foray::nav::NavError::kNoPath, "blocked: no path");
 }
 
@@ -143,7 +143,7 @@ void test_narrow_corridor()
     foray::nav::AstarPlanner planner;
     foray::nav::Path path;
     const auto error = planner.plan(
-      map, foray::nav::Pose2{0.5, 1.0, 0.0}, foray::nav::Pose2{3.5, 1.0, 0.0}, &path);
+      map, foray::nav::Pose2{0.5, 1.0, 0.0}, foray::nav::Pose2{3.5, 1.0, 0.0}, foray::nav::PlanningOptions{}, &path);
     check(error == foray::nav::NavError::kNone, "narrow(0.20m): passable");
   }
   {
@@ -152,7 +152,7 @@ void test_narrow_corridor()
     foray::nav::AstarPlanner planner;
     foray::nav::Path path;
     const auto error = planner.plan(
-      map, foray::nav::Pose2{0.5, 1.0, 0.0}, foray::nav::Pose2{3.5, 1.0, 0.0}, &path);
+      map, foray::nav::Pose2{0.5, 1.0, 0.0}, foray::nav::Pose2{3.5, 1.0, 0.0}, foray::nav::PlanningOptions{}, &path);
     check(error == foray::nav::NavError::kNone, "narrow(1 cell): still geometrically passable");
     // 但斜穿犄角被禁止：路径必须正交穿过缺口，不允许"蹭着走"
     check(path.size() >= 2, "narrow(1 cell): has path");
@@ -170,8 +170,8 @@ void test_smoothing_reduces_points()
   foray::nav::Path smooth_path;
   const foray::nav::Pose2 start{0.30, 0.30, 0.0};
   const foray::nav::Pose2 goal{3.30, 1.60, 0.0};
-  check(raw.plan(map, start, goal, &raw_path) == foray::nav::NavError::kNone, "raw plan ok");
-  check(smooth.plan(map, start, goal, &smooth_path) == foray::nav::NavError::kNone, "smooth plan ok");
+  check(raw.plan(map, start, goal, foray::nav::PlanningOptions{}, &raw_path) == foray::nav::NavError::kNone, "raw plan ok");
+  check(smooth.plan(map, start, goal, foray::nav::PlanningOptions{}, &smooth_path) == foray::nav::NavError::kNone, "smooth plan ok");
   check(smooth_path.size() <= raw_path.size(), "smoothing does not add points");
   check(smooth_path.size() < raw_path.size(), "smoothing actually removes points on open field");
 }
@@ -198,14 +198,14 @@ void test_tunnel_preferred()
     params.prefer_weight = 1.0;   // 关掉偏好
     foray::nav::AstarPlanner planner(params);
     const auto error = planner.plan(
-      map, foray::nav::Pose2{0.5, 1.0, 0.0}, foray::nav::Pose2{3.5, 1.0, 0.0}, &no_pref);
+      map, foray::nav::Pose2{0.5, 1.0, 0.0}, foray::nav::Pose2{3.5, 1.0, 0.0}, foray::nav::PlanningOptions{}, &no_pref);
     check(error == foray::nav::NavError::kNone, "no-pref: ok");
   }
   foray::nav::Path with_pref;
   {
     foray::nav::AstarPlanner planner;
     const auto error = planner.plan(
-      map, foray::nav::Pose2{0.5, 1.0, 0.0}, foray::nav::Pose2{3.5, 1.0, 0.0}, &with_pref);
+      map, foray::nav::Pose2{0.5, 1.0, 0.0}, foray::nav::Pose2{3.5, 1.0, 0.0}, foray::nav::PlanningOptions{}, &with_pref);
     check(error == foray::nav::NavError::kNone, "pref: ok");
   }
 
@@ -228,6 +228,40 @@ void test_tunnel_preferred()
   check(took_tunnel, "pref: detours through the preferred tunnel band");
 }
 
+
+void test_budget_exhausted()
+{
+  // 预算给 1 次展开，肯定到不了：必须快速返回而不是死算。
+  foray::nav::Costmap map = make_free_map();
+  foray::nav::AstarPlanner planner;
+  foray::nav::Path path;
+  foray::nav::PlanningOptions options;
+  options.max_expansions = 1;
+  const auto error = planner.plan(
+    map, foray::nav::Pose2{0.3, 0.3, 0.0}, foray::nav::Pose2{3.5, 1.5, 0.0}, options, &path);
+  check(error == foray::nav::NavError::kNoPath, "budget: exhausted returns kNoPath");
+}
+
+void test_cost_used_as_weight()
+{
+  // 同一条直线，把中段铺成"贵"的膨胀带：路径应当绕开它，而不是无视代价直穿。
+  foray::nav::Costmap map = make_free_map();
+  for (int ix = 20; ix < 60; ++ix) {
+    for (int iy = 0; iy < 16; ++iy) {map.set_cost(ix, iy, 200);}
+  }
+  foray::nav::AstarPlanner planner;
+  foray::nav::Path path;
+  const auto error = planner.plan(
+    map, foray::nav::Pose2{0.5, 0.4, 0.0}, foray::nav::Pose2{3.5, 0.4, 0.0},
+    foray::nav::PlanningOptions{}, &path);
+  check(error == foray::nav::NavError::kNone, "weight: ok");
+  bool went_around = false;
+  for (const auto & pose : path) {
+    if (pose.y > 0.80) {went_around = true;}
+  }
+  check(went_around, "weight: routes around the expensive band instead of crossing it");
+}
+
 }  // namespace
 
 int main()
@@ -240,6 +274,8 @@ int main()
   test_narrow_corridor();
   test_smoothing_reduces_points();
   test_tunnel_preferred();
+  test_budget_exhausted();
+  test_cost_used_as_weight();
 
   if (g_failures == 0) {
     std::printf("ALL TESTS PASSED\n");

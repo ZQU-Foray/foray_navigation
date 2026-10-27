@@ -51,8 +51,9 @@ struct PursuitParams
   /// 估计曲率时向前/向后看的距离（米）。
   double curvature_forward_dist{0.7};
 
-  /// 到点容差（米）：进入后输出零速度（由状态机判到达）。
-  double goal_tolerance{0.15};
+  /// 停止容差（米）：距终点小于它时输出零速度。
+  /// @note **不是到达判定**——到达由状态机按 `NavGoal::xy_tolerance` 判。
+  double stop_tolerance{0.15};
 };
 
 /// 纯追踪控制器：全向底盘，不做航向对齐，直接朝前视点平移。
@@ -74,6 +75,8 @@ public:
     VelocityCommand * out) override;
 
   void reset() override;
+
+  double stop_tolerance() const override {return params_.stop_tolerance;}
 
   /// 当前参数（调参与测试用）。
   const PursuitParams & params() const {return params_;}

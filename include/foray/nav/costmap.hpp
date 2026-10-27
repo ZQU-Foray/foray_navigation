@@ -67,6 +67,9 @@ public:
   int width() const override { return width_; }
   int height() const override { return height_; }
   Vec2 origin() const override { return origin_; }
+  int64_t stamp_ns() const override { return stamp_ns_; }
+  const uint8_t * data() const override { return costs_.empty() ? nullptr : costs_.data(); }
+  int stride() const override { return width_; }
   uint8_t cost_at(int ix, int iy) const override;
   bool world_to_grid(const Vec2 & world, int * ix, int * iy) const override;
   bool grid_to_world(int ix, int iy, Vec2 * world) const override;
@@ -83,6 +86,8 @@ private:
   int width_{0};
   int height_{0};
   std::vector<uint8_t> costs_{};
+  /// 最近一次写入层的时间（纳秒），作为代价图版本。
+  int64_t stamp_ns_{0};
 };
 
 }  // namespace nav

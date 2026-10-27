@@ -108,7 +108,7 @@ NavError PursuitController::compute(
   const double goal_distance = distance(current, goal);
 
   // 到点：输出零速度，交给状态机判到达。
-  if (goal_distance <= params_.goal_tolerance) {
+  if (goal_distance <= params_.stop_tolerance) {
     last_command_ = VelocityCommand{};
     last_scale_ = 0.0;
     has_last_ = true;

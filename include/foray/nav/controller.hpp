@@ -24,9 +24,13 @@ namespace nav
 
 /// 局部控制器接口：给当前位姿、一条路径和周期，出一个底盘速度指令。
 ///
+/// **到达判定不在这里。** 分工写死如下（避免两边各写一套）：
+/// - **控制器**：只负责"顺着路径走"，并在距终点小于 `stop_tolerance` 时输出零速度；
+/// - **状态机**：拿 `NavGoal::xy_tolerance`（以及 `require_heading`）判 `kReached`，
+///   再用 `NavStatus` 上报。
+///
 /// 契约：
-/// - **无状态规划、有状态控制**：控制器可以记上次的指令（做限幅、平滑），
-///   `reset()` 之后必须回到初始状态；
+/// - **有状态**：可以记住上次指令做限幅/平滑；`reset()` 之后必须回到初始状态；
 /// - 输出前必须做**幅值限幅**与**变化率限幅**，不许把超限值交给底盘；
 /// - 不抛异常；内部失败返回具体原因，由状态机决定是否进入恢复。
 class LocalController
@@ -37,9 +41,9 @@ public:
   /// 计算一个控制周期的指令。
   /// @param pose     当前位姿（世界坐标）
   /// @param path     待跟随的路径（含起点）
-  /// @param dt       距上一周期的时长（秒）
+  /// @param dt       距上一周期的时长（秒），必须为正
   /// @param out      输出指令
-  /// @return 成功为 `NavError::kNone`
+  /// @return 成功为 `NavError::kNone`；非法输入为 `kInvalidInput`
   virtual NavError compute(
     const Pose2 & pose,
     const Path & path,
@@ -48,6 +52,11 @@ public:
 
   /// 清空内部状态（切换目标、进入恢复后必须调用）。
   virtual void reset() = 0;
+
+  /// 停止容差（米）：距终点小于它时输出零速度。
+  ///
+  /// 注意：这**不是**到达判定——到达由状态机按 `NavGoal::xy_tolerance` 判。
+  virtual double stop_tolerance() const = 0;
 };
 
 }  // namespace nav
