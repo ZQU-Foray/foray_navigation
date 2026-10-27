@@ -10,6 +10,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 add_library(foray_navigation
   src/grid_map.cpp
   src/costmap.cpp
+  src/astar_planner.cpp
 )
 add_library(Foray::Navigation ALIAS foray_navigation)
 
@@ -41,6 +42,13 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
   target_compile_options(costmap_test PRIVATE -Wall -Wextra -Wpedantic)
 endif()
 add_test(NAME costmap_test COMMAND costmap_test)
+
+add_executable(astar_planner_test test/astar_planner_test.cpp)
+target_link_libraries(astar_planner_test PRIVATE foray_navigation)
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+  target_compile_options(astar_planner_test PRIVATE -Wall -Wextra -Wpedantic)
+endif()
+add_test(NAME astar_planner_test COMMAND astar_planner_test)
 
 include(GNUInstallDirs)
 install(DIRECTORY include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})

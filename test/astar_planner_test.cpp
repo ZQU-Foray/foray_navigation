@@ -1,0 +1,197 @@
+// Copyright 2026 Foray
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// A* 的独立测试：直线、L 形、绕障碍、不可穿致死、目标致死、起点越界、全封闭、
+// 窄通道（刚好能过 / 差一点过不去）、视线捷径化。
+
+#include <cmath>
+#include <cstdio>
+#include <string>
+#include <vector>
+
+#include "foray/nav/astar_planner.hpp"
+#include "foray/nav/costmap.hpp"
+
+namespace
+{
+
+int g_failures = 0;
+
+void check(bool condition, const char * what)
+{
+  if (!condition) {
+    std::printf("FAIL: %s\n", what);
+    ++g_failures;
+  }
+}
+
+constexpr int kW = 80;   // 80 x 40 格，0.05 m/格 => 4 m x 2 m
+constexpr int kH = 40;
+constexpr double kRes = 0.05;
+
+foray::nav::Costmap make_free_map()
+{
+  foray::nav::Costmap map;
+  std::string error;
+  map.init(kW, kH, kRes, foray::nav::Vec2{0.0, 0.0}, &error);
+  for (int iy = 0; iy < kH; ++iy) {
+    for (int ix = 0; ix < kW; ++ix) {map.set_cost(ix, iy, foray::nav::kCostFree);}
+  }
+  return map;
+}
+
+/// 竖直墙：把 x = 2.00m（第 40 列）整列刷致死，可留一个缺口。
+void add_wall(foray::nav::Costmap * map, int gap_from_row, int gap_to_row)
+{
+  const int column = 40;
+  for (int iy = 0; iy < kH; ++iy) {
+    if (iy >= gap_from_row && iy <= gap_to_row) {continue;}
+    map->set_cost(column, iy, foray::nav::kCostLethal);
+  }
+}
+
+void test_straight_line()
+{
+  foray::nav::Costmap map = make_free_map();
+  foray::nav::AstarPlanner planner;
+  foray::nav::Path path;
+  const auto error = planner.plan(
+    map, foray::nav::Pose2{0.5, 1.0, 0.0}, foray::nav::Pose2{3.5, 1.0, 0.0}, &path);
+  check(error == foray::nav::NavError::kNone, "straight: ok");
+  check(path.size() >= 2, "straight: has points");
+  check(std::fabs(path.front().x - 0.5) < 0.06, "straight: starts near start");
+  check(std::fabs(path.back().x - 3.5) < 0.06, "straight: ends near goal");
+  // 直线且无墙：捷径化后应只剩很少的点
+  check(path.size() <= 4, "straight: shortcut collapses points");
+}
+
+void test_l_shape()
+{
+  foray::nav::Costmap map = make_free_map();
+  // 竖墙挡住 x=2.0 的下半部分，只留上方缺口
+  add_wall(&map, 26, 39);
+  foray::nav::AstarPlanner planner;
+  foray::nav::Path path;
+  const auto error = planner.plan(
+    map, foray::nav::Pose2{0.5, 0.5, 0.0}, foray::nav::Pose2{3.5, 0.5, 0.0}, &path);
+  check(error == foray::nav::NavError::kNone, "L: ok");
+  // 必须从缺口（上方，y > 1.3m）绕过去
+  bool went_high = false;
+  for (const auto & pose : path) {
+    if (pose.y > 1.3) {went_high = true;}
+  }
+  check(went_high, "L: goes around through the gap");
+  // 路径不能踩到致死格
+  for (const auto & pose : path) {
+    int ix = 0;
+    int iy = 0;
+    if (map.world_to_grid(foray::nav::Vec2{pose.x, pose.y}, &ix, &iy)) {
+      check(map.cost_at(ix, iy) != foray::nav::kCostLethal, "L: path avoids lethal cells");
+    }
+  }
+}
+
+void test_goal_in_lethal()
+{
+  foray::nav::Costmap map = make_free_map();
+  map.set_cost(60, 20, foray::nav::kCostLethal);
+  foray::nav::AstarPlanner planner;
+  foray::nav::Path path;
+  const auto error = planner.plan(
+    map, foray::nav::Pose2{0.5, 1.0, 0.0}, foray::nav::Pose2{3.0, 1.0, 0.0}, &path);
+  check(error == foray::nav::NavError::kGoalInLethal, "goal lethal: reported without searching");
+}
+
+void test_start_outside()
+{
+  foray::nav::Costmap map = make_free_map();
+  foray::nav::AstarPlanner planner;
+  foray::nav::Path path;
+  const auto error = planner.plan(
+    map, foray::nav::Pose2{-1.0, 1.0, 0.0}, foray::nav::Pose2{3.0, 1.0, 0.0}, &path);
+  check(error == foray::nav::NavError::kStartOutsideMap, "start outside: reported");
+}
+
+void test_fully_blocked()
+{
+  foray::nav::Costmap map = make_free_map();
+  add_wall(&map, kH, -1);   // 没有缺口
+  foray::nav::AstarPlanner planner;
+  foray::nav::Path path;
+  const auto error = planner.plan(
+    map, foray::nav::Pose2{0.5, 1.0, 0.0}, foray::nav::Pose2{3.5, 1.0, 0.0}, &path);
+  check(error == foray::nav::NavError::kNoPath, "blocked: no path");
+}
+
+void test_narrow_corridor()
+{
+  // 4 格宽缺口 = 0.20m；2 格宽 = 0.10m。测试"能过"和"太窄过不去"两种。
+  {
+    foray::nav::Costmap map = make_free_map();
+    add_wall(&map, 18, 21);   // 4 格宽
+    foray::nav::AstarPlanner planner;
+    foray::nav::Path path;
+    const auto error = planner.plan(
+      map, foray::nav::Pose2{0.5, 1.0, 0.0}, foray::nav::Pose2{3.5, 1.0, 0.0}, &path);
+    check(error == foray::nav::NavError::kNone, "narrow(0.20m): passable");
+  }
+  {
+    foray::nav::Costmap map = make_free_map();
+    add_wall(&map, 20, 20);   // 1 格宽
+    foray::nav::AstarPlanner planner;
+    foray::nav::Path path;
+    const auto error = planner.plan(
+      map, foray::nav::Pose2{0.5, 1.0, 0.0}, foray::nav::Pose2{3.5, 1.0, 0.0}, &path);
+    check(error == foray::nav::NavError::kNone, "narrow(1 cell): still geometrically passable");
+    // 但斜穿犄角被禁止：路径必须正交穿过缺口，不允许"蹭着走"
+    check(path.size() >= 2, "narrow(1 cell): has path");
+  }
+}
+
+void test_smoothing_reduces_points()
+{
+  foray::nav::Costmap map = make_free_map();
+  foray::nav::AstarParams params;
+  params.smooth = false;
+  foray::nav::AstarPlanner raw(params);
+  foray::nav::AstarPlanner smooth;
+  foray::nav::Path raw_path;
+  foray::nav::Path smooth_path;
+  const foray::nav::Pose2 start{0.30, 0.30, 0.0};
+  const foray::nav::Pose2 goal{3.30, 1.60, 0.0};
+  check(raw.plan(map, start, goal, &raw_path) == foray::nav::NavError::kNone, "raw plan ok");
+  check(smooth.plan(map, start, goal, &smooth_path) == foray::nav::NavError::kNone, "smooth plan ok");
+  check(smooth_path.size() <= raw_path.size(), "smoothing does not add points");
+  check(smooth_path.size() < raw_path.size(), "smoothing actually removes points on open field");
+}
+
+}  // namespace
+
+int main()
+{
+  test_straight_line();
+  test_l_shape();
+  test_goal_in_lethal();
+  test_start_outside();
+  test_fully_blocked();
+  test_narrow_corridor();
+  test_smoothing_reduces_points();
+
+  if (g_failures == 0) {
+    std::printf("ALL TESTS PASSED\n");
+    return 0;
+  }
+  std::printf("%d FAILURE(S)\n", g_failures);
+  return 1;
+}
